@@ -99,6 +99,8 @@ class DQN_Trainer:
 		self.t = 0
 		self.game_state = game
 
+		if not os.path.exists("logs/"):
+			os.mkdir("logs/")
 		if not os.path.exists("logs/" + self.game_conf.game_name + "/"):
 			os.mkdir("logs/" + self.game_conf.game_name)
 		if not os.path.exists("saved_networks/"):

@@ -97,6 +97,8 @@ class ShootPlaneGame:
 
         # 将被击中的敌机对象添加到击毁敌机Group中，用来渲染击毁动画
         enemies_shooted = pygame.sprite.groupcollide(self.enemies, self.player.bullets, 0, 1)
+        if len(enemies_shooted) > 0:
+        	reward = 1
         for enemy_down in enemies_shooted:
             enemy_down.shootcount = enemy_down.shootcount - 1
             if enemy_down.isDown():
@@ -116,9 +118,9 @@ class ShootPlaneGame:
             self.screen.blit(self.player.image[self.player.img_index], self.player.rect)
             self.player_down_index += 1
             if self.player_down_index > 47:
-                terminal = True
-                self.__init__()
-                reward = -1
+	            terminal = True
+	            reward = -1
+	            self.__init__()
 
 
         # 绘制子弹和敌机
@@ -126,16 +128,6 @@ class ShootPlaneGame:
         self.enemies.draw(self.screen)
 
 
-        # 更新屏幕
-        pygame.display.update()
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-                
-        # 监听键盘事件
-        key_pressed = pygame.key.get_pressed()
         # 若玩家被击中，则无效
         # if not self.player.is_hit:
         #     if key_pressed[K_w] or key_pressed[K_UP]:
@@ -148,13 +140,13 @@ class ShootPlaneGame:
         #         self.player.moveRight()
         if not self.player.is_hit:
             if input_actions[0]:
-                self.player.moveUp()
-            if input_actions[1]:
-                self.player.moveDown()
-            if input_actions[2]:
                 self.player.moveLeft()
-            if input_actions[3]:
+            if input_actions[1]:
                 self.player.moveRight()
+            if input_actions[2]:
+                self.player.moveUp()
+            if input_actions[3]:
+                self.player.moveDown()
         image_data = pygame.surfarray.array3d(pygame.display.get_surface())
         pygame.display.update()
         self.clock.tick(self.fps)
