@@ -51,16 +51,16 @@ class GameState:
         # player velocity, max velocity, downward accleration, accleration on flap
         self.pipeVelX = -4
         self.playerVelY    =  0    # player's velocity along Y, default same as playerFlapped
-        self.playerMaxVelY =  10   # max vel along Y, max descend speed
-        self.playerMinVelY =  -8   # min vel along Y, max ascend speed
+        self.playerMaxVelY =  8   # max vel along Y, max descend speed
+        self.playerMinVelY =  -3   # min vel along Y, max ascend speed
         self.playerAccY    =   1   # players downward accleration
-        self.playerFlapAcc =  -9   # players speed on flapping
+        self.playerFlapAcc =  -8   # players speed on flapping
         self.playerFlapped = False # True when player flaps
 
     def frame_step(self, input_actions):
         pygame.event.pump()
 
-        reward = 0.1
+        reward = 0.2
         terminal = False
 
         if sum(input_actions) != 1:
@@ -91,12 +91,21 @@ class GameState:
 
         # player's movement
         if self.playerVelY < self.playerMaxVelY and not self.playerFlapped:
-            self.playerVelY += self.playerAccY
+            self.playerVelY += self.playerAccY # downward
         if self.playerFlapped:
             self.playerFlapped = False
         self.playery += min(self.playerVelY, BASEY - self.playery - PLAYER_HEIGHT)
-        if self.playery < 0:
-            self.playery = 0
+        # if self.playery < 30:
+        #     #self.playery = 0
+        #     image_data = pygame.surfarray.array3d(pygame.display.get_surface())
+        #     pygame.display.update()
+        #     FPSCLOCK.tick(FPS)
+        #     #print self.upperPipes[0]['y'] + PIPE_HEIGHT - int(BASEY * 0.2)
+        #     self.__init__()
+        #     terminal = True
+        #     reward = -1
+        #     return image_data, reward, terminal
+
 
         # move pipes to left
         for uPipe, lPipe in zip(self.upperPipes, self.lowerPipes):
@@ -121,8 +130,8 @@ class GameState:
         if isCrash:
             #SOUNDS['hit'].play()
             #SOUNDS['die'].play()
-            terminal = True
             self.__init__()
+            terminal = True
             reward = -1
 
         # draw sprites
@@ -182,9 +191,11 @@ def checkCrash(player, upperPipes, lowerPipes):
     player['h'] = IMAGES['player'][0].get_height()
 
     # if player crashes into ground
-    if player['y'] + player['h'] >= BASEY - 1:
+    if player['y'] + player['h'] >= BASEY - 1: # collide the down 
         return True
-    else:
+    elif player['y'] + player['h'] <= 35: # collide the up
+        return True
+    else:   # collide the pipe
 
         playerRect = pygame.Rect(player['x'], player['y'],
                       player['w'], player['h'])

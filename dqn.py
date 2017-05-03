@@ -119,6 +119,7 @@ class DQN_Trainer:
 		self.readout_t = None # Q(s, a) , real number: 1*2
 		self.action_vec = None # batch * num_actions
 		self.terminal_b = False
+		self.deque_last = []
 
 		self.sess = tf.InteractiveSession()
 		self.saver = tf.train.Saver()
@@ -178,7 +179,7 @@ class DQN_Trainer:
 		self.readout_t = self.cnn.readout.eval(feed_dict = {self.cnn.in_layer: [self.s_t]})[0] # [[]]
 		if self.t % self.game_conf.frames_per_action == 0:
 			if random.random() <= self.epsilon:
-				print("-----------Random Action ---------------")
+				#print("-----------Random Action ---------------")
 				self.action_index = random.randrange(self.game_conf.num_actions)
 			else:
 				self.action_index = np.argmax(self.readout_t)
@@ -188,6 +189,9 @@ class DQN_Trainer:
 
 	def __get_next_game_state_reward(self):
 		img_t_1_color, self.r_t, self.terminal_b = self.game_state.frame_step(self.action)
+		# if self.r_t == 0.1:
+		# 	self.r_t = -0.1
+
 		img_t_1 = cv2.cvtColor(cv2.resize(img_t_1_color, tuple(self.game_conf.in_shape)), \
 									cv2.COLOR_BGR2GRAY)
 		ret, img_t_1 = cv2.threshold(img_t_1, \
@@ -218,13 +222,15 @@ class DQN_Trainer:
 			self.epsilon -= (self.game_conf.init_epsilon - self.game_conf.final_epsilon) / self.game_conf.num_explorations
 
 	def __store_transitions(self):
-		self.D.append((self.s_t, self.action, self.r_t, self.s_t_1, self.terminal_b))
+		self.deque_last = (self.s_t, self.action, self.r_t, self.s_t_1, self.terminal_b)
+		self.D.append(self.deque_last)
 		if len(self.D) > self.game_conf.size_replay_mem:
 			self.D.popleft()
 
 	def __update_cnn_params(self):
 		if self.t > self.game_conf.num_observations:
-			batch = random.sample(self.D, self.game_conf.size_batch)
+			batch = random.sample(self.D, self.game_conf.size_batch - 1)
+			batch.append(self.deque_last)
 			s_t_batch = []; a_t_batch = []; r_t_batch = []; s_t_1_batch = [] # can not concatenateh]
 
 			for i in xrange(len(batch)):
@@ -243,7 +249,7 @@ class DQN_Trainer:
 					r_t_1.append(r_t_batch[i] + self.game_conf.gamma * np.max(readout_j_1_batch[i]))
 
 			self.trainer.run(feed_dict = {
-				self.q_i_1: r_t_1, # feture Q(s, a)
+				self.q_i_1: r_t_1, # future Q(s, a)
 				self.action_vec: a_t_batch, # current action
 				self.cnn.in_layer: s_t_batch # current state
 				})
@@ -258,6 +264,7 @@ class DQN_Trainer:
 			state = "Explore"
 		else:
 			state = "train"
+		#if self.r_t in (-1, 1):
 		print(" Time: ", self.t, \
 				" State: ", state, \
 				" Epsilon: ", self.epsilon, \

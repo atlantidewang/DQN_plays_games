@@ -4,11 +4,11 @@ num_actions = 2 # number of valid actions
 gamma = 0.99 # decay rate of past observations
 num_observations = 10000. # timesteps to observe before training
 num_explorations = 2000000. # frames over which to anneal epsilon
-final_epsilon = 0.0001 # final value of epsilon
+final_epsilon = 0.01 # final value of epsilon
 init_epsilon = 0.6 # starting value of epsilon
-size_replay_mem = 50000 # number of previous transitions to remember
+size_replay_mem = 10000 # number of previous transitions to remember
 size_batch = 32 # size of minibatch
-frames_per_action = 1
+frames_per_action = 3
 
 # cnn parameters
 in_shape = 		[80, 80]
@@ -21,10 +21,10 @@ pool=			True
 
 # bp parameters
 cnn_out_hidden_size = 256
-full_connected_sizes = [256, 2]
+full_connected_sizes = [256, num_actions]
 
 # optimizer parameter
-adam_learning_rate = 1e-6
+adam_learning_rate = 1e-5
 
 # picture process parameters
 thresh = 1

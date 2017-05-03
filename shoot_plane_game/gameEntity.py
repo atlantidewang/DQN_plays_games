@@ -7,7 +7,7 @@ Created on Wed Sep 11 16:36:03 2013
 
 import pygame
 
-SCREEN_WIDTH = 390
+SCREEN_WIDTH = 450#390
 SCREEN_HEIGHT = 650
 
 PLAYER_WIDTH = 102
@@ -17,7 +17,7 @@ ENEMY_SMALL = 1
 ENEMY_MIDDLE = 2
 ENEMY_BIG = 3
 
-ENEMY_SAMLL_SPEED = 3
+ENEMY_SAMLL_SPEED = 2
 ENEMY_MIDDLE_SPEED = 2
 ENEMY_BIG_SPEED = 1
 
@@ -28,7 +28,7 @@ class Bullet(pygame.sprite.Sprite):
         self.image = bullet_img
         self.rect = self.image.get_rect()
         self.rect.midbottom = init_pos
-        self.speed = 10
+        self.speed = 20
 
     def move(self):
         self.rect.top -= self.speed
@@ -42,7 +42,7 @@ class Player(pygame.sprite.Sprite):
             self.image.append(plane_img.subsurface(player_rect[i]).convert_alpha())
         self.rect = player_rect[0]                      # 初始化图片所在的矩形
         self.rect.topleft = init_pos                    # 初始化矩形的左上角坐标
-        self.speed = 8                                  # 初始化玩家速度，这里是一个确定的值
+        self.speed = 10                                  # 初始化玩家速度，这里是一个确定的值
         self.bullets = pygame.sprite.Group()            # 玩家飞机所发射的子弹的集合
         self.img_index = 0                              # 玩家精灵图片索引
         self.is_hit = False                             # 玩家是否被击中
@@ -54,27 +54,35 @@ class Player(pygame.sprite.Sprite):
 
     def moveUp(self):
         if self.rect.top <= 0:
-            self.rect.top = 0
+            #self.rect.top = 0
+            return True
         else:
             self.rect.top -= self.speed
+            return False
 
     def moveDown(self):
         if self.rect.top >= SCREEN_HEIGHT - self.rect.height:
-            self.rect.top = SCREEN_HEIGHT - self.rect.height
+            #self.rect.top = SCREEN_HEIGHT - self.rect.height
+            return True
         else:
             self.rect.top += self.speed
+            return False
 
     def moveLeft(self):
         if self.rect.left <= 0:
-            self.rect.left = 0
+            #self.rect.left = 0
+            return True
         else:
             self.rect.left -= self.speed
+            return False
 
     def moveRight(self):
         if self.rect.left >= SCREEN_WIDTH - self.rect.width:
-            self.rect.left = SCREEN_WIDTH - self.rect.width
+            #self.rect.left = SCREEN_WIDTH - self.rect.width
+            return True
         else:
             self.rect.left += self.speed
+            return False
 
 # 敌人类
 class _Enemy(pygame.sprite.Sprite):

@@ -29,7 +29,7 @@ class ShootPlaneGame:
         player_rect.append(pygame.Rect(330, 624, 102, 126))
         player_rect.append(pygame.Rect(330, 498, 102, 126))
         player_rect.append(pygame.Rect(432, 624, 102, 126))
-        player_pos = [(SCREEN_WIDTH - PLAYER_WIDTH) /2, SCREEN_HEIGHT - PLAYER_HEIGHT]      # 玩家初始位置
+        player_pos = [(SCREEN_WIDTH - PLAYER_WIDTH) /2, SCREEN_HEIGHT - 1.5 * PLAYER_HEIGHT]      # 玩家初始位置
         self.player = Player(plane_img, player_rect, player_pos)
 
         # 定义子弹对象使用的surface相关参数
@@ -56,11 +56,17 @@ class ShootPlaneGame:
         self.score = 0
         self.clock = pygame.time.Clock()
         self.fps = 30
+        self.reward = 0.1
+        self.image = None
+        self.terminal = False
 
 
     def frame_step(self, input_actions):   
-        reward = 0.1
-        terminal = False
+        self.reward = 0.1
+        self.terminal = False
+
+        if sum(input_actions) != 1:
+            raise ValueError('Multiple input actions!')
 
         # 控制发射子弹频率,并发射子弹
         if not self.player.is_hit:
@@ -98,7 +104,7 @@ class ShootPlaneGame:
         # 将被击中的敌机对象添加到击毁敌机Group中，用来渲染击毁动画
         enemies_shooted = pygame.sprite.groupcollide(self.enemies, self.player.bullets, 0, 1)
         if len(enemies_shooted) > 0:
-        	reward = 1
+        	self.reward = 1
         for enemy_down in enemies_shooted:
             enemy_down.shootcount = enemy_down.shootcount - 1
             if enemy_down.isDown():
@@ -114,13 +120,11 @@ class ShootPlaneGame:
             # 更换图片索引使飞机有动画效果
             self.player.img_index = self.shoot_frequency / 8
         else:
-            self.player.img_index = self.player_down_index / 8
-            self.screen.blit(self.player.image[self.player.img_index], self.player.rect)
-            self.player_down_index += 1
-            if self.player_down_index > 47:
-	            terminal = True
-	            reward = -1
-	            self.__init__()
+			self.player.img_index = self.player_down_index / 8
+			self.screen.blit(self.player.image[self.player.img_index], self.player.rect)
+			self.player_down_index += 1
+			#if self.player_down_index > 47:
+			return self.__terminate_game()  
 
 
         # 绘制子弹和敌机
@@ -129,26 +133,37 @@ class ShootPlaneGame:
 
 
         # 若玩家被击中，则无效
-        # if not self.player.is_hit:
-        #     if key_pressed[K_w] or key_pressed[K_UP]:
-        #         self.player.moveUp()
-        #     if key_pressed[K_s] or key_pressed[K_DOWN]:
-        #         self.player.moveDown()
-        #     if key_pressed[K_a] or key_pressed[K_LEFT]:
-        #         self.player.moveLeft()
-        #     if key_pressed[K_d] or key_pressed[K_RIGHT]:
-        #         self.player.moveRight()
-        if not self.player.is_hit:
-            if input_actions[0]:
-                self.player.moveLeft()
+        if not self.player.is_hit: # input_actions[0] = 1: do nothing
             if input_actions[1]:
-                self.player.moveRight()
+                self.terminal = self.player.moveLeft()
+                if self.terminal:
+                	return self.__terminate_game()
             if input_actions[2]:
-                self.player.moveUp()
+                self.terminal = self.player.moveRight()
+                if self.terminal:
+                	return self.__terminate_game()
             if input_actions[3]:
-                self.player.moveDown()
-        image_data = pygame.surfarray.array3d(pygame.display.get_surface())
+                self.terminal = self.player.moveUp()
+                if self.terminal:
+                	return self.__terminate_game()
+            if input_actions[4]:
+                self.terminal = self.player.moveDown()  
+                if self.terminal:               	
+                	return self.__terminate_game()       
+
+        return self.__return_image_reward()
+
+    def __return_image_reward(self):
+    	image_data = pygame.surfarray.array3d(pygame.display.get_surface())
         pygame.display.update()
         self.clock.tick(self.fps)
         #print self.upperPipes[0]['y'] + PIPE_HEIGHT - int(BASEY * 0.2)
-        return image_data, reward, terminal
+        return image_data, self.reward, self.terminal
+
+    def __terminate_game(self):
+		image_data, self.reward, self.terminal = self.__return_image_reward()	  
+		self.__init__()
+		self.terminal = True
+		self.reward = -1
+		print("==================Game over============================")
+		return image_data, self.reward, self.terminal

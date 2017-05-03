@@ -1,6 +1,6 @@
 # flappy bird configuration
 game_name = 'shoot_plane' # the name of the game being played for log files
-num_actions = 4 # number of valid actions
+num_actions = 16 # number of valid actions
 gamma = 0.99 # decay rate of past observations
 num_observations = 10000. # timesteps to observe before training
 num_explorations = 2000000. # frames over which to anneal epsilon
