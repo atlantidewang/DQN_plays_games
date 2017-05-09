@@ -61,14 +61,14 @@ class CNN:
 												self.out_channels[0], \
 												self.strides[0], \
 												self.pool)
-
+		# not pooling
 		for i in xrange(1, len(self.out_channels)):
 			self.out_hidden = self.__create_cnn_hidden_layer(self.out_hidden, \
 										self.filters[i], \
 										self.out_channels[i -  1], \
 										self.out_channels[i], \
 										self.strides[i], \
-										self.pool)
+										False)#self.pool)
 
 		# create full connected backprogate neural networks.
 		out_hidden_flat = tf.reshape(self.out_hidden, [-1, cnn_out_hidden_size])
@@ -189,8 +189,6 @@ class DQN_Trainer:
 
 	def __get_next_game_state_reward(self):
 		img_t_1_color, self.r_t, self.terminal_b = self.game_state.frame_step(self.action)
-		# if self.r_t == 0.1:
-		# 	self.r_t = -0.1
 
 		img_t_1 = cv2.cvtColor(cv2.resize(img_t_1_color, tuple(self.game_conf.in_shape)), \
 									cv2.COLOR_BGR2GRAY)
@@ -229,8 +227,7 @@ class DQN_Trainer:
 
 	def __update_cnn_params(self):
 		if self.t > self.game_conf.num_observations:
-			batch = random.sample(self.D, self.game_conf.size_batch - 1)
-			batch.append(self.deque_last)
+			batch = random.sample(self.D, self.game_conf.size_batch)
 			s_t_batch = []; a_t_batch = []; r_t_batch = []; s_t_1_batch = [] # can not concatenateh]
 
 			for i in xrange(len(batch)):
@@ -257,19 +254,20 @@ class DQN_Trainer:
 	def __print_info(self):
 		if self.t % 10000 == 0:
 			self.saver.save(self.sess, "saved_networks/" + self.game_conf.game_name + "/params", global_step = self.t)
-		state = ""
-		if self.t <= self.game_conf.num_observations:
-			state = "Observe"
-		elif self.t > self.game_conf.num_observations and self.t <= self.game_conf.num_observations + self.game_conf.num_explorations:
-			state = "Explore"
-		else:
-			state = "train"
-		#if self.r_t in (-1, 1):
-		print(" Time: ", self.t, \
-				" State: ", state, \
-				" Epsilon: ", self.epsilon, \
-				" Action: ", self.action_index, \
-				" Reward:", self.r_t,
-				" Q_max: %e"% np.max(self.readout_t))
-				# "\tQ_value: ", self.readout_t[0], \
-				# ", ", self.readout_t[1])
+		if self.t % 1000 == 0:	
+			state = ""
+			if self.t <= self.game_conf.num_observations:
+				state = "Observe"
+			elif self.t > self.game_conf.num_observations and self.t <= self.game_conf.num_observations + self.game_conf.num_explorations:
+				state = "Explore"
+			else:
+				state = "train"
+			#if self.r_t in (-1, 1):
+			print(" Time: ", self.t, \
+					" State: ", state, \
+					" Epsilon: ", self.epsilon, \
+					" Action: ", self.action_index, \
+					" Reward:", self.r_t,
+					" Q_max: %e"% np.max(self.readout_t))
+					# "\tQ_value: ", self.readout_t[0], \
+					# ", ", self.readout_t[1])

@@ -1,6 +1,2 @@
-model_checkpoint_path: "params-110000"
-all_model_checkpoint_paths: "params-70000"
-all_model_checkpoint_paths: "params-80000"
-all_model_checkpoint_paths: "params-90000"
-all_model_checkpoint_paths: "params-100000"
-all_model_checkpoint_paths: "params-110000"
+model_checkpoint_path: "params-0"
+all_model_checkpoint_paths: "params-0"

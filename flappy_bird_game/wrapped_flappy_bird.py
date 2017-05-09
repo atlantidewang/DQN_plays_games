@@ -51,16 +51,16 @@ class GameState:
         # player velocity, max velocity, downward accleration, accleration on flap
         self.pipeVelX = -4
         self.playerVelY    =  0    # player's velocity along Y, default same as playerFlapped
-        self.playerMaxVelY =  8   # max vel along Y, max descend speed
-        self.playerMinVelY =  -3   # min vel along Y, max ascend speed
+        self.playerMaxVelY =  10   # max vel along Y, max descend speed
+        self.playerMinVelY =  -8   # min vel along Y, max ascend speed
         self.playerAccY    =   1   # players downward accleration
-        self.playerFlapAcc =  -8   # players speed on flapping
+        self.playerFlapAcc =  -9   # players speed on flapping
         self.playerFlapped = False # True when player flaps
 
     def frame_step(self, input_actions):
         pygame.event.pump()
 
-        reward = 0.2
+        reward = 0.1
         terminal = False
 
         if sum(input_actions) != 1:
@@ -95,6 +95,8 @@ class GameState:
         if self.playerFlapped:
             self.playerFlapped = False
         self.playery += min(self.playerVelY, BASEY - self.playery - PLAYER_HEIGHT)
+        if self.playery < 0:
+            self.playery = 0
         # if self.playery < 30:
         #     #self.playery = 0
         #     image_data = pygame.surfarray.array3d(pygame.display.get_surface())
@@ -193,8 +195,8 @@ def checkCrash(player, upperPipes, lowerPipes):
     # if player crashes into ground
     if player['y'] + player['h'] >= BASEY - 1: # collide the down 
         return True
-    elif player['y'] + player['h'] <= 35: # collide the up
-        return True
+    # elif player['y'] + player['h'] <= 35: # collide the up
+    #     return True
     else:   # collide the pipe
 
         playerRect = pygame.Rect(player['x'], player['y'],
