@@ -68,7 +68,7 @@ class CNN:
 										self.out_channels[i -  1], \
 										self.out_channels[i], \
 										self.strides[i], \
-										False)#self.pool)
+										self.pool)
 
 		# create full connected backprogate neural networks.
 		out_hidden_flat = tf.reshape(self.out_hidden, [-1, cnn_out_hidden_size])
@@ -148,7 +148,6 @@ class DQN_Trainer:
 
 			self.__print_info()
 
-			self.s_t = self.s_t_1
 			self.t += 1
 
 
@@ -192,10 +191,10 @@ class DQN_Trainer:
 
 		img_t_1 = cv2.cvtColor(cv2.resize(img_t_1_color, tuple(self.game_conf.in_shape)), \
 									cv2.COLOR_BGR2GRAY)
-		ret, img_t_1 = cv2.threshold(img_t_1, \
-									self.game_conf.thresh, \
-									self.game_conf.max_value, \
-									cv2.THRESH_BINARY)
+		# ret, img_t_1 = cv2.threshold(img_t_1, \
+		# 							self.game_conf.thresh, \
+		# 							self.game_conf.max_value, \
+		# 							cv2.THRESH_BINARY)
 		img_t_1 = np.reshape(img_t_1, tuple(self.game_conf.in_shape + [1]))
 		self.s_t_1 = np.append(img_t_1, \
 								self.s_t[:, :, :self.game_conf.size_pic_stack - 1], \
@@ -206,10 +205,10 @@ class DQN_Trainer:
 		img_t_color, self.r_t, self.terminal_b = self.game_state.frame_step(self.action)
 		img_t = cv2.cvtColor(cv2.resize(img_t_color, tuple(self.game_conf.in_shape)), \
 								cv2.COLOR_BGR2GRAY)
-		ret, img_t = cv2.threshold(img_t, \
-									self.game_conf.thresh, \
-									self.game_conf.max_value, \
-									cv2.THRESH_BINARY)
+		# ret, img_t = cv2.threshold(img_t, \
+		# 							self.game_conf.thresh, \
+		# 							self.game_conf.max_value, \
+		# 							cv2.THRESH_BINARY)
 		for i in range(self.game_conf.size_pic_stack):
 			self.s_t.append(img_t)
 		self.s_t = np.stack((self.s_t),axis = 2) # now, prev1, prev2, prev3
@@ -224,6 +223,7 @@ class DQN_Trainer:
 		self.D.append(self.deque_last)
 		if len(self.D) > self.game_conf.size_replay_mem:
 			self.D.popleft()
+		self.s_t = self.s_t_1
 
 	def __update_cnn_params(self):
 		if self.t > self.game_conf.num_observations:
@@ -254,20 +254,20 @@ class DQN_Trainer:
 	def __print_info(self):
 		if self.t % 10000 == 0:
 			self.saver.save(self.sess, "saved_networks/" + self.game_conf.game_name + "/params", global_step = self.t)
-		if self.t % 1000 == 0:	
-			state = ""
-			if self.t <= self.game_conf.num_observations:
-				state = "Observe"
-			elif self.t > self.game_conf.num_observations and self.t <= self.game_conf.num_observations + self.game_conf.num_explorations:
-				state = "Explore"
-			else:
-				state = "train"
-			#if self.r_t in (-1, 1):
-			print(" Time: ", self.t, \
-					" State: ", state, \
-					" Epsilon: ", self.epsilon, \
-					" Action: ", self.action_index, \
-					" Reward:", self.r_t,
-					" Q_max: %e"% np.max(self.readout_t))
-					# "\tQ_value: ", self.readout_t[0], \
-					# ", ", self.readout_t[1])
+		#if self.t % 1000 == 0:	
+		state = ""
+		if self.t <= self.game_conf.num_observations:
+			state = "Observe"
+		elif self.t > self.game_conf.num_observations and self.t <= self.game_conf.num_observations + self.game_conf.num_explorations:
+			state = "Explore"
+		else:
+			state = "train"
+		#if self.r_t in (-1, 1):
+		print(" Time: ", self.t, \
+				" State: ", state, \
+				" Epsilon: ", self.epsilon, \
+				" Action: ", self.action_index, \
+				" Reward:", self.r_t,
+				" Q_max: %e"% np.max(self.readout_t))
+				# "\tQ_value: ", self.readout_t[0], \
+				# ", ", self.readout_t[1])
