@@ -72,7 +72,6 @@ class GameState:
             if self.playery > -2 * PLAYER_HEIGHT:
                 self.playerVelY = self.playerFlapAcc
                 self.playerFlapped = True
-                #SOUNDS['wing'].play()
 
         # check for score
         playerMidPos = self.playerx + PLAYER_WIDTH / 2
@@ -80,7 +79,6 @@ class GameState:
             pipeMidPos = pipe['x'] + PIPE_WIDTH / 2
             if pipeMidPos <= playerMidPos < pipeMidPos + 4:
                 self.score += 1
-                #SOUNDS['point'].play()
                 reward = 1
 
         # playerIndex basex change
@@ -195,8 +193,8 @@ def checkCrash(player, upperPipes, lowerPipes):
     # if player crashes into ground
     if player['y'] + player['h'] >= BASEY - 1: # collide the down 
         return True
-    # elif player['y'] + player['h'] <= 35: # collide the up
-    #     return True
+    elif player['y'] + player['h'] <= 35: # collide the up
+         return True
     else:   # collide the pipe
 
         playerRect = pygame.Rect(player['x'], player['y'],

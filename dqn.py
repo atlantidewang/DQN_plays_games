@@ -22,13 +22,15 @@ class CNN:
 		self.in_layer = []
 		self.out_hidden = []
 		self.readout = []
+		self.all_layers = []
 
 	def __weight_variable(self, shape):
-		init = tf.truncated_normal(shape, stddev = 0.01) # avoid symmetry and overfitting. (abs(x) < 2*sigma)
+		init = tf.truncated_normal(shape, mean = 0.0001, stddev = 0.008) # avoid symmetry and overfitting. (abs(x) < 2*sigma)
 		return tf.Variable(init)
 
 	def __bias_variable(self, shape):
 		init = tf.constant(0.01, shape = shape)
+		#init = tf.truncated_normal([1], mean = 0, stddev = 0.03)
 		return tf.Variable(init)
 
 	def __conv2d(self, x, W, stride):
@@ -68,14 +70,13 @@ class CNN:
 										self.out_channels[i -  1], \
 										self.out_channels[i], \
 										self.strides[i], \
-										self.pool)
+										False)#self.pool)
 
 		# create full connected backprogate neural networks.
 		out_hidden_flat = tf.reshape(self.out_hidden, [-1, cnn_out_hidden_size])
 		self.readout = self.__create_bp_hidden_layer(out_hidden_flat, \
 												cnn_out_hidden_size, \
 												full_connected_sizes[0])
-
 		for i in xrange(1, len(full_connected_sizes)):
 			self.readout = self.__create_bp_hidden_layer(self.readout, \
 												full_connected_sizes[i - 1], \
@@ -97,6 +98,7 @@ class DQN_Trainer:
 		self.D = deque()
 		self.epsilon = self.game_conf.init_epsilon
 		self.t = 0
+		self.first_batch = True
 		self.game_state = game
 
 		if not os.path.exists("logs/"):
@@ -108,15 +110,20 @@ class DQN_Trainer:
 		self.readout_file = open("logs/" + self.game_conf.game_name + "/readout.txt", "w")
 		self.hidden_file = open("logs/" + self.game_conf.game_name + "/hidden.txt", "w")
 
+		self.s_t_batch = []
+		self.a_t_batch = []
+		self.r_t_batch = []
+		self.s_t_1_batch = []
+		self.r_t_1_batch = []
+
 		self.s_t = []
 		self.s_t_1 = [] # state
 		self.r_t = []
-		self.r_t_1 = [] # reward
 		self.q_i = None
 		self.q_i_1 = None # Q(s, a), tensor
 		self.action = np.zeros(self.game_conf.num_actions) # num_actions * 1
 		self.action_index = 0 # which action is performed
-		self.readout_t = None # Q(s, a) , real number: 1*2
+		self.readout_t =  [] # Q(s, a) , real number: 1*2
 		self.action_vec = None # batch * num_actions
 		self.terminal_b = False
 		self.deque_last = []
@@ -124,12 +131,13 @@ class DQN_Trainer:
 		self.sess = tf.InteractiveSession()
 		self.saver = tf.train.Saver()
 
+
 	def train_dqn(self):
 		self.__create_optimizer()
 
 		# first state
 		self.action.fill(0)
-		self.action[0] = 1 # just one palce can be 1
+		self.action[0] = 1 # just one palce can be 1		
 		self.__get_first_game_state_reward()
 
 		# start to explore and exploit
@@ -176,6 +184,12 @@ class DQN_Trainer:
 	def __choose_actions(self):
 		self.action.fill(0)
 		self.readout_t = self.cnn.readout.eval(feed_dict = {self.cnn.in_layer: [self.s_t]})[0] # [[]]
+		# if self.readout_t[0] < 1e-6 and self.readout_t[0] > -1e-6:
+		# 	print(self.t, "%5f"%self.readout_t[0], " %5f"%self.readout_t[1])
+		# if self.readout_t[1] < 1e-6 and self.readout_t[1] > -1e-6:
+		# 	print(self.t, "%5f"%self.readout_t[0], " %5f"%self.readout_t[1])	
+
+
 		if self.t % self.game_conf.frames_per_action == 0:
 			if random.random() <= self.epsilon:
 				#print("-----------Random Action ---------------")
@@ -183,18 +197,21 @@ class DQN_Trainer:
 			else:
 				self.action_index = np.argmax(self.readout_t)
 		else:
-			self.action_index = 0 # every four frames to perform an action
+			self.action_index = 0
 		self.action[self.action_index] = 1
 
 	def __get_next_game_state_reward(self):
+		if self.terminal_b:
+				for i in range(2):
+					self.game_state.frame_step(self.action)
 		img_t_1_color, self.r_t, self.terminal_b = self.game_state.frame_step(self.action)
 
 		img_t_1 = cv2.cvtColor(cv2.resize(img_t_1_color, tuple(self.game_conf.in_shape)), \
 									cv2.COLOR_BGR2GRAY)
-		# ret, img_t_1 = cv2.threshold(img_t_1, \
-		# 							self.game_conf.thresh, \
-		# 							self.game_conf.max_value, \
-		# 							cv2.THRESH_BINARY)
+		ret, img_t_1 = cv2.threshold(img_t_1, \
+									self.game_conf.thresh, \
+									self.game_conf.max_value, \
+									cv2.THRESH_BINARY)
 		img_t_1 = np.reshape(img_t_1, tuple(self.game_conf.in_shape + [1]))
 		self.s_t_1 = np.append(img_t_1, \
 								self.s_t[:, :, :self.game_conf.size_pic_stack - 1], \
@@ -202,17 +219,19 @@ class DQN_Trainer:
 
 
 	def __get_first_game_state_reward(self):
+		for i in range(2):
+			self.game_state.frame_step(self.action)
 		img_t_color, self.r_t, self.terminal_b = self.game_state.frame_step(self.action)
 		img_t = cv2.cvtColor(cv2.resize(img_t_color, tuple(self.game_conf.in_shape)), \
 								cv2.COLOR_BGR2GRAY)
-		# ret, img_t = cv2.threshold(img_t, \
-		# 							self.game_conf.thresh, \
-		# 							self.game_conf.max_value, \
-		# 							cv2.THRESH_BINARY)
-		for i in range(self.game_conf.size_pic_stack):
-			self.s_t.append(img_t)
-		self.s_t = np.stack((self.s_t),axis = 2) # now, prev1, prev2, prev3
-
+		ret, img_t = cv2.threshold(img_t, \
+									self.game_conf.thresh, \
+									self.game_conf.max_value, \
+									cv2.THRESH_BINARY)
+		# for i in range(self.game_conf.size_pic_stack):
+		# 	self.s_t.append(img_t)
+		# self.s_t = np.stack((self.s_t),axis = 2) # now, prev1, prev2, prev3
+		self.s_t = np.stack((img_t, img_t, img_t, img_t),axis = 2) 
 
 	def __update_epsilon(self):
 		if self.epsilon > self.game_conf.final_epsilon and self.t > self.game_conf.num_observations:
@@ -228,46 +247,54 @@ class DQN_Trainer:
 	def __update_cnn_params(self):
 		if self.t > self.game_conf.num_observations:
 			batch = random.sample(self.D, self.game_conf.size_batch)
-			s_t_batch = []; a_t_batch = []; r_t_batch = []; s_t_1_batch = [] # can not concatenateh]
+			if self.first_batch:
+				for i in xrange(len(batch)):
+					self.s_t_batch.append(batch[i][0]) 
+					self.a_t_batch.append(batch[i][1])
+					self.r_t_batch.append(batch[i][2])
+					self.s_t_1_batch.append(batch[i][3]) # can not use [], just use append
+					self.r_t_1_batch.append(0)
+				self.first_batch = False
+			else:
+				for i in xrange(len(batch)):
+					self.s_t_batch[i] = batch[i][0]
+					self.a_t_batch[i] = batch[i][1]
+					self.r_t_batch[i] = batch[i][2]
+					self.s_t_1_batch[i] = batch[i][3]
+			
+			readout_j_1_batch = self.cnn.readout.eval(feed_dict = {self.cnn.in_layer: self.s_t_1_batch})[:, 0]
 
-			for i in xrange(len(batch)):
-				s_t_batch.append(batch[i][0]) 
-				a_t_batch.append(batch[i][1])
-				r_t_batch.append(batch[i][2])
-				s_t_1_batch.append(batch[i][3]) # can not use [], just use append
-			readout_j_1_batch = self.cnn.readout.eval(feed_dict = {self.cnn.in_layer: s_t_1_batch})[:, 0]
 
-
-			r_t_1 = [] # update the Q-table value
+			 # update the Q-table value
 			for i in xrange(len(batch)):
 				if batch[i][4]:
-					r_t_1.append(r_t_batch[i])
+					self.r_t_1_batch[i] = self.r_t_batch[i]
 				else:
-					r_t_1.append(r_t_batch[i] + self.game_conf.gamma * np.max(readout_j_1_batch[i]))
+					self.r_t_1_batch[i] = self.r_t_batch[i] + self.game_conf.gamma * np.max(readout_j_1_batch[i])
 
 			self.trainer.run(feed_dict = {
-				self.q_i_1: r_t_1, # future Q(s, a)
-				self.action_vec: a_t_batch, # current action
-				self.cnn.in_layer: s_t_batch # current state
+				self.q_i_1: self.r_t_1_batch, # future Q(s, a)
+				self.action_vec: self.a_t_batch, # current action
+				self.cnn.in_layer: self.s_t_batch # current state
 				})
 
 	def __print_info(self):
 		if self.t % 10000 == 0:
 			self.saver.save(self.sess, "saved_networks/" + self.game_conf.game_name + "/params", global_step = self.t)
-		#if self.t % 1000 == 0:	
-		state = ""
-		if self.t <= self.game_conf.num_observations:
-			state = "Observe"
-		elif self.t > self.game_conf.num_observations and self.t <= self.game_conf.num_observations + self.game_conf.num_explorations:
-			state = "Explore"
-		else:
-			state = "train"
-		#if self.r_t in (-1, 1):
-		print(" Time: ", self.t, \
+		if self.t % 100 == 0:	
+			state = ""
+			if self.t <= self.game_conf.num_observations:
+				state = "Observe"
+			elif self.t > self.game_conf.num_observations and self.t <= self.game_conf.num_observations + self.game_conf.num_explorations:
+				state = "Explore"
+			else:
+				state = "train"
+			print(" Time: ", self.t, \
 				" State: ", state, \
 				" Epsilon: ", self.epsilon, \
 				" Action: ", self.action_index, \
 				" Reward:", self.r_t,
-				" Q_max: %e"% np.max(self.readout_t))
-				# "\tQ_value: ", self.readout_t[0], \
-				# ", ", self.readout_t[1])
+				" Q_value:", "%5f"%self.readout_t[0], " %5f"%self.readout_t[1])
+		#print(self.t, "%5f"%self.readout_t[0], " %5f"%self.readout_t[1])
+		
+		
